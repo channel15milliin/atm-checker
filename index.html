@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="ATM手数料">
+<title>ATM手数料チェッカー</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #F7F6F2; --surface: #FFFFFF; --border: #E5E3DC;
+    --text: #1A1A18; --text-muted: #888780;
+    --blue: #185FA5; --blue-bg: #E6F1FB;
+    --green: #0F6E56; --green-bg: #E1F5EE;
+    --red: #993C1D; --red-bg: #FAECE7;
+    --amber: #854F0B; --amber-bg: #FAEEDA;
+    --radius: 12px; --radius-sm: 8px;
+  }
+  body { font-family: 'Noto Sans JP', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; padding-bottom: 3rem; }
+  header { background: var(--surface); border-bottom: 1px solid var(--border); padding: 1rem 1.25rem 0.875rem; position: sticky; top: 0; z-index: 10; }
+  header h1 { font-size: 17px; font-weight: 700; }
+  .header-sub { display: flex; align-items: center; justify-content: space-between; margin-top: 3px; }
+  header p { font-size: 12px; color: var(--text-muted); }
+  .clock { font-size: 12px; font-weight: 700; color: var(--blue); background: var(--blue-bg); padding: 3px 10px; border-radius: 20px; }
+  .container { max-width: 480px; margin: 0 auto; padding: 1.25rem 1rem; }
+  .section { margin-bottom: 1.5rem; }
+  .section-label { font-size: 11px; font-weight: 700; color: var(--text-muted); letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 8px; }
+  .step-indicator { display: flex; align-items: center; gap: 6px; margin-bottom: 8px; }
+  .step-dot { width: 20px; height: 20px; border-radius: 50%; background: var(--border); font-size: 11px; font-weight: 700; color: var(--text-muted); display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: background 0.2s; }
+  .step-dot.active { background: var(--blue); color: white; }
+  .step-dot.done { background: var(--green); color: white; }
+  .bank-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .bank-btn { background: var(--surface); border: 1.5px solid var(--border); border-radius: var(--radius); padding: 12px; cursor: pointer; text-align: left; transition: all 0.15s; -webkit-tap-highlight-color: transparent; }
+  .bank-btn:active { transform: scale(0.97); }
+  .bank-btn.selected { border-color: var(--blue); border-width: 2px; background: var(--blue-bg); }
+  .bank-btn .name { font-size: 13px; font-weight: 700; color: var(--text); }
+  .bank-btn .type { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+  .bank-btn.selected .name { color: var(--blue); }
+  .atm-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+  .atm-btn { background: var(--surface); border: 1.5px solid var(--border); border-radius: var(--radius-sm); padding: 10px; cursor: pointer; font-size: 12px; font-weight: 500; color: var(--text); text-align: left; line-height: 1.4; transition: all 0.15s; -webkit-tap-highlight-color: transparent; font-family: 'Noto Sans JP', sans-serif; }
+  .atm-btn:active { transform: scale(0.97); }
+  .atm-btn.selected { border-color: var(--blue); border-width: 2px; background: var(--blue-bg); color: var(--blue); }
+  .time-row { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+  .auto-btn { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 700; color: var(--blue); background: var(--blue-bg); border: none; border-radius: 20px; padding: 6px 14px; cursor: pointer; font-family: 'Noto Sans JP', sans-serif; -webkit-tap-highlight-color: transparent; white-space: nowrap; }
+  .auto-btn:active { transform: scale(0.97); }
+  .auto-badge { font-size: 10px; color: var(--blue); background: var(--blue-bg); padding: 2px 7px; border-radius: 10px; font-weight: 700; }
+  .time-grid { display: grid; grid-template-columns: 1fr; gap: 6px; }
+  .time-btn { background: var(--surface); border: 1.5px solid var(--border); border-radius: var(--radius-sm); padding: 11px 14px; cursor: pointer; font-size: 13px; font-weight: 500; color: var(--text); text-align: left; line-height: 1.4; transition: all 0.15s; -webkit-tap-highlight-color: transparent; font-family: 'Noto Sans JP', sans-serif; display: flex; align-items: center; justify-content: space-between; }
+  .time-btn:active { transform: scale(0.99); }
+  .time-btn.selected { border-color: var(--blue); border-width: 2px; background: var(--blue-bg); color: var(--blue); }
+  .time-btn .arrow { font-size: 14px; color: var(--text-muted); }
+  .time-btn.selected .arrow { color: var(--blue); }
+  .placeholder { background: var(--surface); border: 1.5px dashed var(--border); border-radius: var(--radius-sm); padding: 14px; font-size: 12px; color: var(--text-muted); text-align: center; }
+  .result-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.25rem; min-height: 80px; }
+  .result-empty { font-size: 13px; color: var(--text-muted); text-align: center; padding: 1rem 0; }
+  .result-bank { font-size: 12px; color: var(--text-muted); margin-bottom: 2px; }
+  .result-atm { font-size: 12px; color: var(--text-muted); margin-bottom: 8px; }
+  .result-fee { font-size: 42px; font-weight: 700; letter-spacing: -0.03em; line-height: 1; }
+  .result-fee.free { color: var(--green); }
+  .result-fee.paid { color: var(--red); }
+  .badges { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+  .badge { display: inline-block; font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 20px; }
+  .badge-free { background: var(--green-bg); color: var(--green); }
+  .badge-fee { background: var(--red-bg); color: var(--red); }
+  .badge-auto { background: var(--blue-bg); color: var(--blue); }
+  .result-note { font-size: 12px; color: var(--text-muted); margin-top: 10px; line-height: 1.7; border-top: 1px solid var(--border); padding-top: 10px; }
+
+  /* 最安ATMセクション */
+  .cheapest-card { background: var(--surface); border: 2px solid #1D9E75; border-radius: var(--radius); padding: 1.25rem; }
+  .cheapest-header { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+  .cheapest-icon { font-size: 16px; }
+  .cheapest-title { font-size: 13px; font-weight: 700; color: var(--green); }
+  .cheapest-sub { font-size: 11px; color: var(--text-muted); margin-top: 1px; }
+  .cheapest-list { display: flex; flex-direction: column; gap: 8px; }
+  .cheapest-item { display: flex; align-items: center; justify-content: space-between; padding: 10px 12px; border-radius: var(--radius-sm); border: 1px solid var(--border); background: var(--bg); }
+  .cheapest-item.best { background: var(--green-bg); border-color: #5DCAA5; }
+  .cheapest-item-left { display: flex; align-items: center; gap: 8px; }
+  .rank { font-size: 11px; font-weight: 700; color: var(--text-muted); min-width: 16px; }
+  .cheapest-item.best .rank { color: var(--green); }
+  .cheapest-atm { font-size: 13px; font-weight: 500; color: var(--text); }
+  .cheapest-item.best .cheapest-atm { color: var(--green); font-weight: 700; }
+  .cheapest-fee { font-size: 14px; font-weight: 700; }
+  .cheapest-fee.free { color: var(--green); }
+  .cheapest-fee.paid { color: var(--text-muted); }
+  .cheapest-empty { font-size: 13px; color: var(--text-muted); text-align: center; padding: 0.75rem 0; }
+  .divider { border: none; border-top: 1px solid var(--border); margin: 1.5rem 0; }
+</style>
+</head>
+<body>
+<header>
+  <h1>ATM手数料チェッカー</h1>
+  <div class="header-sub">
+    <p>銀行・ATM・時間帯を選んで確認</p>
+    <span class="clock" id="clock">--:--</span>
+  </div>
+</header>
+
+<div class="container">
+
+  <!-- STEP 1: 銀行 -->
+  <div class="section">
+    <div class="step-indicator">
+      <div class="step-dot active" id="dot1">1</div>
+      <div class="section-label" style="margin:0">銀行を選択</div>
+    </div>
+    <div class="bank-grid">
+      <button class="bank-btn selected" data-bank="mufg" onclick="selectBank(this)">
+        <div class="name">三菱UFJ銀行</div><div class="type">メガバンク</div>
+      </button>
+      <button class="bank-btn" data-bank="yucho" onclick="selectBank(this)">
+        <div class="name">ゆうちょ銀行</div><div class="type">郵政系</div>
+      </button>
+      <button class="bank-btn" data-bank="rakuten" onclick="selectBank(this)">
+        <div class="name">楽天銀行</div><div class="type">ネットバンク</div>
+      </button>
+      <button class="bank-btn" data-bank="ncb" onclick="selectBank(this)">
+        <div class="name">西日本シティ銀行</div><div class="type">地方銀行</div>
+      </button>
+    </div>
+  </div>
+
+  <!-- STEP 2: ATM -->
+  <div class="section">
+    <div class="step-indicator">
+      <div class="step-dot" id="dot2">2</div>
+      <div class="section-label" style="margin:0">ATMを選択</div>
+    </div>
+    <div class="atm-grid" id="atm-grid">
+      <div class="placeholder" style="grid-column:1/-1">↑ 銀行を選んでください</div>
+    </div>
+  </div>
+
+  <!-- STEP 3: 時間帯 -->
+  <div class="section">
+    <div class="step-indicator">
+      <div class="step-dot" id="dot3">3</div>
+      <div class="section-label" style="margin:0">時間帯を選択</div>
+    </div>
+    <div class="time-row">
+      <button class="auto-btn" onclick="autoSelectTime()">⏱ 現在時刻で自動選択</button>
+      <span class="auto-badge" id="auto-badge" style="display:none">自動選択中</span>
+    </div>
+    <div class="time-grid" id="time-grid">
+      <div class="placeholder">↑ ATMを選んでください</div>
+    </div>
+  </div>
+
+  <!-- STEP 4: 手数料結果 -->
+  <div class="section">
+    <div class="step-indicator">
+      <div class="step-dot" id="dot4">4</div>
+      <div class="section-label" style="margin:0">手数料</div>
+    </div>
+    <div class="result-card" id="result-card">
+      <p class="result-empty">銀行・ATM・時間帯を選ぶと<br>手数料が表示されます</p>
+    </div>
+  </div>
+
+  <hr class="divider">
+
+  <!-- 最安ATM -->
+  <div class="section">
+    <div class="step-indicator">
+      <div class="step-dot done" style="background:var(--green);color:white;">★</div>
+      <div class="section-label" style="margin:0">今一番安いATMは？</div>
+    </div>
+    <div class="cheapest-card" id="cheapest-card">
+      <p class="cheapest-empty">↑ 銀行と時間帯を選ぶと<br>全ATMの手数料を比較します</p>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// --- データ定義 ---
+// 各ATMの手数料判定ロジック（引数: {mins, isWeekday, isSaturday, isSunday, date, lastDay}）
+const feeRules = {
+  mufg_own:       t => (t.mins >= 8*60+45 && t.mins < 21*60) ? { fee: 0, note: "自行ATMの8:45〜21:00（毎日）は無料です。" } : { fee: 110, note: "21:00以降・8:45より前は時間外手数料110円。" },
+  seven_mufg:     t => { const ok = (t.date===25||t.date===t.lastDay) && t.isWeekday && t.mins>=8*60+45 && t.mins<18*60; return ok ? { fee: 0, note: "今日は25日か月末日の平日！8:45〜18:00は無料です。" } : { fee: 220, note: "通常220円。毎月25日・末日の平日8:45〜18:00のみ無料。" }; },
+  lawson_mufg:    t => { const ok = (t.date===25||t.date===t.lastDay) && t.isWeekday && t.mins>=8*60+45 && t.mins<18*60; return ok ? { fee: 0, note: "今日は25日か月末日の平日！8:45〜18:00は無料です。" } : { fee: 220, note: "通常220円。毎月25日・末日の平日8:45〜18:00のみ無料。" }; },
+  enet_mufg:      t => { const ok = (t.date===25||t.date===t.lastDay) && t.isWeekday && t.mins>=8*60+45 && t.mins<18*60; return ok ? { fee: 0, note: "今日は25日か月末日の平日！8:45〜18:00は無料です。" } : { fee: 220, note: "通常220円。毎月25日・末日の平日8:45〜18:00のみ無料。" }; },
+  yucho_atm_mufg: t => (t.isWeekday && t.mins>=8*60+45 && t.mins<18*60) ? { fee: 0, note: "平日8:45〜18:00は無料。" } : (t.isSaturday && t.mins>=9*60 && t.mins<14*60) ? { fee: 0, note: "土曜9:00〜14:00は無料。" } : { fee: 110, note: "時間外110円。無料：平日8:45〜18:00・土曜9:00〜14:00。" },
+
+  yucho_post:     () => ({ fee: 0, note: "郵便局・ゆうちょ銀行内ATMは全時間帯無料です。" }),
+  yucho_ext:      t => (t.isWeekday && t.mins>=8*60+45 && t.mins<18*60) ? { fee: 0, note: "平日8:45〜18:00は無料。" } : (t.isSaturday && t.mins>=9*60 && t.mins<14*60) ? { fee: 0, note: "土曜9:00〜14:00は無料。" } : { fee: 110, note: "時間外110円。無料：平日8:45〜18:00・土曜9:00〜14:00。" },
+  seven_yucho:    t => (t.isWeekday && t.mins>=8*60+45 && t.mins<18*60) ? { fee: 0, note: "平日8:45〜18:00は無料。" } : (t.isSaturday && t.mins>=9*60 && t.mins<14*60) ? { fee: 0, note: "土曜9:00〜14:00は無料。" } : { fee: 110, note: "時間外110円。無料：平日8:45〜18:00・土曜9:00〜14:00。" },
+  lawson_yucho:   t => (t.isWeekday && t.mins>=8*60+45 && t.mins<18*60) ? { fee: 0, note: "平日8:45〜18:00は無料。" } : (t.isSaturday && t.mins>=9*60 && t.mins<14*60) ? { fee: 0, note: "土曜9:00〜14:00は無料。" } : { fee: 110, note: "時間外110円。無料：平日8:45〜18:00・土曜9:00〜14:00。" },
+
+  seven_rakuten:  () => ({ fee: 220, note: "時間帯問わず一律220円。ハッピープログラムで月0〜7回無料（ベーシック0回/アドバンスト1回/プレミアム2回/VIP3回/スーパーVIP7回）。" }),
+  lawson_rakuten: () => ({ fee: 220, note: "時間帯問わず一律220円。ハッピープログラムで月0〜7回無料。" }),
+  enet_rakuten:   () => ({ fee: 220, note: "時間帯問わず一律220円。ハッピープログラムで月0〜7回無料。" }),
+  aeon_rakuten:   () => ({ fee: 220, note: "時間帯問わず一律220円。ハッピープログラムで月0〜7回無料。" }),
+
+  ncb_own:        t => (t.isWeekday && t.mins>=8*60+45 && t.mins<18*60) ? { fee: 0, note: "自行ATMの平日8:45〜18:00は無料。" } : { fee: 110, note: "時間外110円。平日8:45〜18:00のみ無料。" },
+  seven_ncb:      t => (t.isWeekday && t.mins>=8*60+45 && t.mins<18*60) ? { fee: 0, note: "平日8:45〜18:00は無料。NCBポイントサービスでシルバー月1回・ゴールド月2回・プラチナ以上月3回の追加無料あり。" } : { fee: 220, note: "手数料220円（2024年11月改定）。平日8:45〜18:00は無料。NCBポイントサービスで無料回数あり。" },
+  lawson_ncb:     t => (t.isWeekday && t.mins>=8*60+45 && t.mins<18*60) ? { fee: 0, note: "平日8:45〜18:00は無料。NCBポイントサービスで無料回数あり。" } : { fee: 220, note: "手数料220円。平日8:45〜18:00は無料。NCBポイントサービスで無料回数あり。" },
+  enet_ncb:       t => (t.isWeekday && t.mins>=8*60+45 && t.mins<18*60) ? { fee: 0, note: "平日8:45〜18:00は無料。NCBポイントサービスで無料回数あり。" } : { fee: 220, note: "手数料220円。平日8:45〜18:00は無料。NCBポイントサービスで無料回数あり。" },
+};
+
+// 各ATMの時間帯定義（手動選択用）
+const atmTimes = {
+  mufg_own:       ["毎日 8:45〜21:00", "上記以外（夜間・早朝）"],
+  seven_mufg:     ["毎月25日・末日 平日8:45〜18:00", "平日（上記以外）", "土曜", "日曜・祝日"],
+  lawson_mufg:    ["毎月25日・末日 平日8:45〜18:00", "平日（上記以外）", "土曜", "日曜・祝日"],
+  enet_mufg:      ["毎月25日・末日 平日8:45〜18:00", "平日（上記以外）", "土曜", "日曜・祝日"],
+  yucho_atm_mufg: ["平日 8:45〜18:00", "土曜 9:00〜14:00", "上記以外（夜間・日祝）"],
+  yucho_post:     ["全時間帯（毎日）"],
+  yucho_ext:      ["平日 8:45〜18:00", "土曜 9:00〜14:00", "上記以外（夜間・日祝）"],
+  seven_yucho:    ["平日 8:45〜18:00", "土曜 9:00〜14:00", "上記以外（夜間・日祝）"],
+  lawson_yucho:   ["平日 8:45〜18:00", "土曜 9:00〜14:00", "上記以外（夜間・日祝）"],
+  seven_rakuten:  ["時間帯問わず（一律）"],
+  lawson_rakuten: ["時間帯問わず（一律）"],
+  enet_rakuten:   ["時間帯問わず（一律）"],
+  aeon_rakuten:   ["時間帯問わず（一律）"],
+  ncb_own:        ["平日 8:45〜18:00", "平日18:00〜21:00 / 土曜8:45〜17:00", "上記以外"],
+  seven_ncb:      ["平日 8:45〜18:00", "平日・土曜（上記以外）", "日曜・祝日 7:00〜21:00"],
+  lawson_ncb:     ["平日 8:45〜18:00", "平日・土曜（上記以外）", "日曜・祝日 7:00〜21:00"],
+  enet_ncb:       ["平日 8:45〜18:00", "平日・土曜（上記以外）", "日曜・祝日 7:00〜21:00"],
+};
+
+// 時間帯インデックス → 仮想日時変換（手動選択用）
+const timeToContext = {
+  mufg_own:       [{ mins:10*60, isWeekday:true,  isSaturday:false, isSunday:false, date:1,  lastDay:31 }, { mins:22*60, isWeekday:true,  isSaturday:false, isSunday:false, date:1,  lastDay:31 }],
+  seven_mufg:     [{ mins:10*60, isWeekday:true,  isSaturday:false, isSunday:false, date:25, lastDay:31 }, { mins:10*60, isWeekday:true,  isSaturday:false, isSunday:false, date:1,  lastDay:31 }, { mins:10*60, isWeekday:false, isSaturday:true,  isSunday:false, date:1, lastDay:31 }, { mins:10*60, isWeekday:false, isSaturday:false, isSunday:true, date:1, lastDay:31 }],
+  lawson_mufg:    [{ mins:10*60, isWeekday:true,  isSaturday:false, isSunday:false, date:25, lastDay:31 }, { mins:10*60, isWeekday:true,  isSaturday:false, isSunday:false, date:1,  lastDay:31 }, { mins:10*60, isWeekday:false, isSaturday:true,  isSunday:false, date:1, lastDay:31 }, { mins:10*60, isWeekday:false, isSaturday:false, isSunday:true, date:1, lastDay:31 }],
+  enet_mufg:      [{ mins:10*60, isWeekday:true,  isSaturday:false, isSunday:false, date:25, lastDay:31 }, { mins:10*60, isWeekday:true,  isSaturday:false, isSunday:false, date:1,  lastDay:31 }, { mins:10*60, isWeekday:false, isSaturday:true,  isSunday:false, date:1, lastDay:31 }, { mins:10*60, isWeekday:false, isSaturday:false, isSunday:true, date:1, lastDay:31 }],
+  yucho_atm_mufg: [{ mins:10*60, isWeekday:true,  isSaturday:false, isSunday:false, date:1, lastDay:31 }, { mins:10*60, isWeekday:false, isSaturday:true,  isSunday:false, date:1, lastDay:31 }, { mins:22*60, isWeekday:false, isSaturday:false, isSunday:true, date:1, lastDay:31 }],
+  yucho_post:     [{ mins:10*60, isWeekday:true,  isSaturday:false, isSunday:false, date:1, lastDay:31 }],
+  yucho_ext:      [{ mins:10*60, isWeekday:true,  isSaturday:false, isSunday:false, date:1, lastDay:31 }, { mins:10*60, isWeekday:false, isSaturday:true,  isSunday:false, date:1, lastDay:31 }, { mins:22*60, isWeekday:false, isSaturday:false, isSunday:true, date:1, lastDay:31 }],
+  seven_yucho:    [{ mins:10*60, isWeekday:true,  isSaturday:false, isSunday:false, date:1, lastDay:31 }, { mins:10*60, isWeekday:false, isSaturday:true,  isSunday:false, date:1, lastDay:31 }, { mins:22*60, isWeekday:false, isSaturday:false, isSunday:true, date:1, lastDay:31 }],
+  lawson_yucho:   [{ mins:10*60, isWeekday:true,  isSaturday:false, isSunday:false, date:1, lastDay:31 }, { mins:10*60, isWeekday:false, isSaturday:true,  isSunday:false, date:1, lastDay:31 }, { mins:22*60, isWeekday:false, isSaturday:false, isSunday:true, date:1, lastDay:31 }],
+  seven_rakuten:  [{ mins:10*60, isWeekday:true,  isSaturday:false, isSunday:false, date:1, lastDay:31 }],
+  lawson_rakuten: [{ mins:10*60, isWeekday:true,  isSaturday:false, isSunday:false, date:1, lastDay:31 }],
+  enet_rakuten:   [{ mins:10*60, isWeekday:true,  isSaturday:false, isSunday:false, date:1, lastDay:31 }],
+  aeon_rakuten:   [{ mins:10*60, isWeekday:true,  isSaturday:false, isSunday:false, date:1, lastDay:31 }],
+  ncb_own:        [{ mins:10*60, isWeekday:true,  isSaturday:false, isSunday:false, date:1, lastDay:31 }, { mins:19*60, isWeekday:true,  isSaturday:false, isSunday:false, date:1, lastDay:31 }, { mins:22*60, isWeekday:false, isSaturday:false, isSunday:true, date:1, lastDay:31 }],
+  seven_ncb:      [{ mins:10*60, isWeekday:true,  isSaturday:false, isSunday:false, date:1, lastDay:31 }, { mins:19*60, isWeekday:true,  isSaturday:false, isSunday:false, date:1, lastDay:31 }, { mins:10*60, isWeekday:false, isSaturday:false, isSunday:true, date:1, lastDay:31 }],
+  lawson_ncb:     [{ mins:10*60, isWeekday:true,  isSaturday:false, isSunday:false, date:1, lastDay:31 }, { mins:19*60, isWeekday:true,  isSaturday:false, isSunday:false, date:1, lastDay:31 }, { mins:10*60, isWeekday:false, isSaturday:false, isSunday:true, date:1, lastDay:31 }],
+  enet_ncb:       [{ mins:10*60, isWeekday:true,  isSaturday:false, isSunday:false, date:1, lastDay:31 }, { mins:19*60, isWeekday:true,  isSaturday:false, isSunday:false, date:1, lastDay:31 }, { mins:10*60, isWeekday:false, isSaturday:false, isSunday:true, date:1, lastDay:31 }],
+};
+
+const data = {
+  mufg:    { name: "三菱UFJ銀行",    atms: [ { id:"mufg_own", label:"三菱UFJ ATM" }, { id:"seven_mufg", label:"セブン銀行ATM" }, { id:"lawson_mufg", label:"ローソン銀行ATM" }, { id:"enet_mufg", label:"イーネットATM" }, { id:"yucho_atm_mufg", label:"ゆうちょATM" } ] },
+  yucho:   { name: "ゆうちょ銀行",   atms: [ { id:"yucho_post", label:"郵便局・ゆうちょ内ATM" }, { id:"yucho_ext", label:"局外ゆうちょATM（駅・ファミマ等）" }, { id:"seven_yucho", label:"セブン銀行ATM" }, { id:"lawson_yucho", label:"ローソン銀行ATM" } ] },
+  rakuten: { name: "楽天銀行",       atms: [ { id:"seven_rakuten", label:"セブン銀行ATM" }, { id:"lawson_rakuten", label:"ローソン銀行ATM" }, { id:"enet_rakuten", label:"イーネットATM" }, { id:"aeon_rakuten", label:"イオン銀行ATM" } ] },
+  ncb:     { name: "西日本シティ銀行", atms: [ { id:"ncb_own", label:"NCB ATM" }, { id:"seven_ncb", label:"セブン銀行ATM" }, { id:"lawson_ncb", label:"ローソン銀行ATM" }, { id:"enet_ncb", label:"イーネットATM" } ] },
+};
+
+let selectedBank = "mufg";
+let selectedAtm = null;
+let selectedTimeIdx = null;
+let currentContext = null; // 現在使用中の時間コンテキスト
+let isAuto = false;
+
+// 時計更新
+function getContext() {
+  const now = new Date();
+  return {
+    mins: now.getHours()*60 + now.getMinutes(),
+    isWeekday: now.getDay()>=1 && now.getDay()<=5,
+    isSaturday: now.getDay()===6,
+    isSunday: now.getDay()===0,
+    date: now.getDate(),
+    lastDay: new Date(now.getFullYear(), now.getMonth()+1, 0).getDate(),
+  };
+}
+
+function updateClock() {
+  const now = new Date();
+  const days = ['日','月','火','水','木','金','土'];
+  document.getElementById('clock').textContent = `${days[now.getDay()]} ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+}
+setInterval(updateClock, 10000);
+updateClock();
+
+function selectBank(btn) {
+  document.querySelectorAll(".bank-btn").forEach(b => b.classList.remove("selected"));
+  btn.classList.add("selected");
+  selectedBank = btn.dataset.bank;
+  selectedAtm = null; selectedTimeIdx = null; currentContext = null; isAuto = false;
+  document.getElementById("auto-badge").style.display = "none";
+  renderAtms();
+  clearResult();
+  clearCheapest();
+  document.getElementById("dot1").className = "step-dot done";
+  document.getElementById("dot2").className = "step-dot active";
+  document.getElementById("dot3").className = "step-dot";
+  document.getElementById("dot4").className = "step-dot";
+}
+
+function renderAtms() {
+  document.getElementById("atm-grid").innerHTML = data[selectedBank].atms.map(a =>
+    `<button class="atm-btn" data-atm="${a.id}" onclick="selectAtm(this)">${a.label}</button>`
+  ).join('');
+  document.getElementById("time-grid").innerHTML = '<div class="placeholder">↑ ATMを選んでください</div>';
+}
+
+function selectAtm(btn) {
+  document.querySelectorAll(".atm-btn").forEach(b => b.classList.remove("selected"));
+  btn.classList.add("selected");
+  selectedAtm = btn.dataset.atm;
+  selectedTimeIdx = null; currentContext = null; isAuto = false;
+  document.getElementById("auto-badge").style.display = "none";
+  renderTimes();
+  clearResult();
+  document.getElementById("dot2").className = "step-dot done";
+  document.getElementById("dot3").className = "step-dot active";
+  document.getElementById("dot4").className = "step-dot";
+}
+
+function renderTimes() {
+  const times = atmTimes[selectedAtm] || [];
+  document.getElementById("time-grid").innerHTML = times.map((t, i) =>
+    `<button class="time-btn" data-idx="${i}" onclick="selectTime(this)"><span>${t}</span><span class="arrow">›</span></button>`
+  ).join('');
+}
+
+function selectTime(btn) {
+  document.querySelectorAll(".time-btn").forEach(b => b.classList.remove("selected"));
+  btn.classList.add("selected");
+  selectedTimeIdx = parseInt(btn.dataset.idx);
+  isAuto = false;
+  document.getElementById("auto-badge").style.display = "none";
+  currentContext = timeToContext[selectedAtm][selectedTimeIdx];
+  showResult();
+  showCheapest();
+  document.getElementById("dot3").className = "step-dot done";
+  document.getElementById("dot4").className = "step-dot active";
+}
+
+function autoSelectTime() {
+  if (!selectedAtm) { alert("先にATMを選んでください"); return; }
+  isAuto = true;
+  currentContext = getContext();
+  // 自動で該当ボタンをハイライト
+  const ctx = currentContext;
+  const times = atmTimes[selectedAtm];
+  const contexts = timeToContext[selectedAtm];
+  // 現在時刻に最も近いコンテキストを選択
+  const result = feeRules[selectedAtm](ctx);
+  let matchIdx = 0;
+  for (let i = 0; i < contexts.length; i++) {
+    if (feeRules[selectedAtm](contexts[i]).fee === result.fee) { matchIdx = i; break; }
+  }
+  document.querySelectorAll(".time-btn").forEach((b, i) => {
+    b.classList.toggle("selected", i === matchIdx);
+  });
+  selectedTimeIdx = matchIdx;
+  document.getElementById("auto-badge").style.display = "inline-flex";
+  showResult();
+  showCheapest();
+  document.getElementById("dot3").className = "step-dot done";
+  document.getElementById("dot4").className = "step-dot active";
+}
+
+function showResult() {
+  if (!selectedAtm || !currentContext) return;
+  const r = feeRules[selectedAtm](currentContext);
+  const atmLabel = data[selectedBank].atms.find(a => a.id === selectedAtm)?.label || '';
+  const isFree = r.fee === 0;
+  const autoTag = isAuto ? `<span class="badge badge-auto">⏱ 自動判定</span>` : '';
+  document.getElementById("result-card").innerHTML = `
+    <p class="result-bank">${data[selectedBank].name}</p>
+    <p class="result-atm">${atmLabel}</p>
+    <p class="result-fee ${isFree ? 'free' : 'paid'}">${isFree ? '無料' : r.fee + '円'}</p>
+    <div class="badges">
+      <span class="badge ${isFree ? 'badge-free' : 'badge-fee'}">${isFree ? '手数料なし' : '手数料あり'}</span>
+      ${autoTag}
+    </div>
+    <p class="result-note">${r.note}</p>
+  `;
+}
+
+function showCheapest() {
+  if (!currentContext) return;
+  const ctx = isAuto ? getContext() : currentContext;
+  const atms = data[selectedBank].atms;
+  const results = atms.map(a => ({
+    label: a.label,
+    id: a.id,
+    fee: feeRules[a.id] ? feeRules[a.id](ctx).fee : 999,
+  }));
+  results.sort((a, b) => a.fee - b.fee);
+  const minFee = results[0].fee;
+
+  document.getElementById("cheapest-card").innerHTML = `
+    <div class="cheapest-header">
+      <span class="cheapest-icon">★</span>
+      <div>
+        <p class="cheapest-title">${data[selectedBank].name} — 全ATM比較</p>
+        <p class="cheapest-sub">${isAuto ? '現在時刻' : '選択した時間帯'}で計算</p>
+      </div>
+    </div>
+    <div class="cheapest-list">
+      ${results.map((r, i) => `
+        <div class="cheapest-item ${r.fee === minFee ? 'best' : ''}">
+          <div class="cheapest-item-left">
+            <span class="rank">${i+1}</span>
+            <span class="cheapest-atm">${r.label}</span>
+          </div>
+          <span class="cheapest-fee ${r.fee === 0 ? 'free' : 'paid'}">${r.fee === 0 ? '無料' : r.fee + '円'}</span>
+        </div>
+      `).join('')}
+    </div>
+  `;
+}
+
+function clearResult() {
+  document.getElementById("result-card").innerHTML = '<p class="result-empty">銀行・ATM・時間帯を選ぶと<br>手数料が表示されます</p>';
+}
+function clearCheapest() {
+  document.getElementById("cheapest-card").innerHTML = '<p class="cheapest-empty">↑ 銀行と時間帯を選ぶと<br>全ATMの手数料を比較します</p>';
+}
+
+renderAtms();
+</script>
+</body>
+</html>
